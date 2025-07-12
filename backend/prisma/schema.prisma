@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+model User {
+  id                BigInt     @id @default(autoincrement())
+  email             String     @unique
+  password          String?
+  first_name        String
+  last_name         String
+  provider          String
+  provider_id       BigInt?
+  active_workout_id BigInt?
+  created_at        DateTime   @default(now())
+  updated_at        DateTime   @updatedAt
+
+  workouts          Workout[]
+  userExercises     UserExercise[]
+}
+
+model Workout {
+  id         BigInt     @id @default(autoincrement())
+  user_id    BigInt
+  name       String
+  type       String
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+
+  user       User       @relation(fields: [user_id], references: [id])
+  workoutPlanSessions   WorkoutPlanSession[]
+}
+
+model WorkoutPlanSession {
+  id             BigInt     @id @default(autoincrement())
+  workout_id     BigInt
+  name           String
+  day_of_week    String?
+  order_in_cycle Int?
+  is_rest_day    Boolean    @default(false)
+  created_at     DateTime   @default(now())
+  updated_at     DateTime   @updatedAt
+
+  workout        Workout    @relation(fields: [workout_id], references: [id])
+  workoutPlanExercises  WorkoutPlanExercise[]
+  sessions       Session[]
+}
+
+model WorkoutPlanExercise {
+  id                    BigInt     @id @default(autoincrement())
+  user_exercise_id      BigInt
+  workout_plan_session_id BigInt
+  rep_range             String?
+  is_reserve            Boolean    @default(false)
+  created_at            DateTime   @default(now())
+  updated_at            DateTime   @updatedAt
+
+  userExercise          UserExercise @relation(fields: [user_exercise_id], references: [id])
+  workoutPlanSession    WorkoutPlanSession @relation(fields: [workout_plan_session_id], references: [id])
+  exercises             Exercise[]
+  reservedIn            ExerciseReserve[] @relation("PrimaryReserve")
+  reservedFrom          ExerciseReserve[] @relation("ReservePrimary")
+}
+
+model UserExercise {
+  id         BigInt   @id @default(autoincrement())
+  name       String
+  notes      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  workoutPlanExercises WorkoutPlanExercise[]
+  user        User?     @relation(fields: [id], references: [id])
+}
+
+model Session {
+  id                     BigInt     @id @default(autoincrement())
+  workout_plan_session_id BigInt
+  is_deload              Boolean?
+  started_at             DateTime?
+  ended_at               DateTime?
+  created_at             DateTime   @default(now())
+  updated_at             DateTime   @updatedAt
+
+  workoutPlanSession     WorkoutPlanSession @relation(fields: [workout_plan_session_id], references: [id])
+  exercises              Exercise[]
+}
+
+model Exercise {
+  id                     BigInt     @id @default(autoincrement())
+  workout_plan_exercise_id BigInt
+  session_id             BigInt
+  skipped                Boolean?
+  note                   String?
+  rpe                    Int?
+  created_at             DateTime   @default(now())
+  updated_at             DateTime   @updatedAt
+
+  planExercise           WorkoutPlanExercise @relation(fields: [workout_plan_exercise_id], references: [id])
+  session                Session             @relation(fields: [session_id], references: [id])
+  sets                   ExerciseSet[]
+}
+
+model ExerciseSet {
+  id          BigInt   @id @default(autoincrement())
+  exercise_id BigInt
+  set_number  Int
+  reps        Int
+  weight      Float
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  exercise    Exercise @relation(fields: [exercise_id], references: [id])
+}
+
+model ExerciseReserve {
+  primary_workout_plan_exercise_id BigInt
+  reserve_workout_plan_exercise_id BigInt
+
+  primary WorkoutPlanExercise @relation("PrimaryReserve", fields: [primary_workout_plan_exercise_id], references: [id])
+  reserve WorkoutPlanExercise @relation("ReservePrimary", fields: [reserve_workout_plan_exercise_id], references: [id])
+
+  @@id([primary_workout_plan_exercise_id, reserve_workout_plan_exercise_id])
+}
